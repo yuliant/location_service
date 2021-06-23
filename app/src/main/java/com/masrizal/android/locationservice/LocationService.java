@@ -1,7 +1,6 @@
 package com.masrizal.android.locationservice;
 
 import android.annotation.SuppressLint;
-import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
@@ -12,6 +11,7 @@ import android.os.Build;
 import android.os.IBinder;
 import android.os.Looper;
 import android.util.Log;
+import android.widget.Toast;
 
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
@@ -20,8 +20,17 @@ import com.google.android.gms.location.LocationCallback;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
+import com.masrizal.android.locationservice.api.ApiClient;
+import com.masrizal.android.locationservice.api.ApiInterface;
+import com.masrizal.android.locationservice.model.Respon;
+
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 public class LocationService extends Service {
+
+    ApiInterface apiInterface;
 
     private LocationCallback locationCallback = new LocationCallback() {
         @Override
@@ -31,6 +40,47 @@ public class LocationService extends Service {
                 double latitude = locationResult.getLastLocation().getLatitude();
                 double longitude = locationResult.getLastLocation().getLongitude();
                 Log.d("LOCATION_UPDATE", latitude + ", " + longitude);
+
+                apiInterface = ApiClient.getData().create(ApiInterface.class);
+                Call<Respon> sendgps = apiInterface.SendGps(
+                        "yourapi",
+                        "0",
+                        Double.toString(latitude),
+                        Double.toString(longitude)
+                );
+
+                sendgps.enqueue(new Callback<Respon>() {
+                    @Override
+                    public void onResponse(Call<Respon> call, Response<Respon> response) {
+                        try {
+
+                            if (response.body().isStatus()) {
+                                Log.d("status", response.body().isStatus() + "");
+
+                                if (response.isSuccessful()) {
+                                    Log.d("status", response.body().getMessage() + "");
+
+                                } else if (response.code() == 400) {
+
+                                }
+
+
+                            } else {
+                                Log.d("status", response.body().isStatus() + "");
+                                Toast.makeText(getApplicationContext(), "Gagal mendapatkan lokasi", Toast.LENGTH_SHORT).show();
+                            }
+
+                        } catch (Exception ex) {
+                            Log.e("error", ex.getMessage());
+                            ex.printStackTrace();
+                        }
+                    }
+
+                    @Override
+                    public void onFailure(Call<Respon> call, Throwable t) {
+
+                    }
+                });
             }
         }
     };
@@ -79,7 +129,7 @@ public class LocationService extends Service {
         }
 
         LocationRequest locationRequest = new LocationRequest();
-        locationRequest.setInterval(4000);
+        locationRequest.setInterval(20000);
         locationRequest.setFastestInterval(2000);
         locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
 
